@@ -52,13 +52,24 @@ def test_upload_csv():
 
 
 def test_analyze_and_results(upload_id):
-    # Trigger analysis
+    # Trigger analysis (async — responds immediately)
     response = httpx.post(f"{BASE_URL}/analyze/{upload_id}", timeout=120)
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "complete"
     assert body["upload_id"] == upload_id
-    assert body["analysed"] > 0
+    assert body["status"] in ("complete", "processing")
+
+    # Poll for results (up to 90s)
+    import time
+    results = None
+    for _ in range(45):
+        r = httpx.get(f"{BASE_URL}/results/{upload_id}")
+        data = r.json()
+        if isinstance(data, list) and data and data[0].get("theme"):
+            results = data
+            break
+        time.sleep(2)
+    assert results is not None, "Analysis did not complete within 90s"
 
     # Fetch results
     response = httpx.get(f"{BASE_URL}/results/{upload_id}")
