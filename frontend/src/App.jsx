@@ -1,10 +1,17 @@
-function App() {
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import UploadScreen from "./UploadScreen";
+import Dashboard from "./Dashboard";
+import ThemeDetail from "./ThemeDetail";
+
+export default function App() {
   return (
-    <div style={{ fontFamily: "sans-serif", padding: "2rem" }}>
-      <h1>Review Analysis Tool</h1>
-      <p>Upload a CSV of customer reviews to get started.</p>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<UploadScreen />} />
+        <Route path="/dashboard/:uploadId" element={<Dashboard />} />
+        <Route path="/theme/:uploadId/:theme" element={<ThemeDetail />} />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App

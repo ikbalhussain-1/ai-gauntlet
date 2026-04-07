@@ -1,0 +1,272 @@
+openapi: 3.0.3
+info:
+  title: CX Review Thematic Analysis API
+  description: |
+    API for uploading customer review CSVs, triggering AI-powered thematic analysis
+    via Claude, and retrieving structured results and aggregate statistics.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns service status. Used by monitoring and docker-compose healthchecks.
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+
+  /upload:
+    post:
+      summary: Upload a CSV of customer reviews
+      description: |
+        Accepts a multipart/form-data CSV file with columns: review_id, product,
+        review_text, date. Stores the rows and returns an upload_id for subsequent
+        analysis calls.
+      operationId: uploadCsv
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV file with columns review_id, product, review_text, date
+      responses:
+        "200":
+          description: File accepted and rows stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+              example:
+                upload_id: "550e8400-e29b-41d4-a716-446655440000"
+                count: 30
+        "400":
+          description: Invalid file (not a CSV, missing columns, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Invalid file type. Please upload a CSV file."
+
+  /analyze/{upload_id}:
+    post:
+      summary: Trigger AI analysis for an upload
+      description: |
+        Sends each unanalysed review for the given upload_id to Claude for thematic
+        classification and sentiment analysis. Runs synchronously — returns once all
+        reviews are processed.
+      operationId: analyzeUpload
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The upload_id returned by POST /upload
+      responses:
+        "200":
+          description: Analysis complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeResponse"
+              example:
+                upload_id: "550e8400-e29b-41d4-a716-446655440000"
+                status: complete
+                analysed: 30
+        "404":
+          description: Upload not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Upload not found"
+
+  /results/{upload_id}:
+    get:
+      summary: Retrieve all analysed reviews for an upload
+      description: Returns a JSON array of all reviews with their AI-assigned theme, sentiment and key phrases.
+      operationId: getResults
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Array of analysed reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewResult"
+              example:
+                - review_id: "1"
+                  product: "Aloe Vera Juice"
+                  review_text: "Absolutely love this product! My digestion has improved significantly."
+                  date: "2024-01-15"
+                  theme: "Efficacy"
+                  sentiment: "Positive"
+                  key_phrases: ["digestion improved", "daily use"]
+        "404":
+          description: Upload not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/{upload_id}:
+    get:
+      summary: Aggregate stats for an upload
+      description: Returns theme distribution counts and sentiment breakdown for all analysed reviews in the upload.
+      operationId: getAnalytics
+      parameters:
+        - name: upload_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Aggregate statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsResponse"
+              example:
+                theme_distribution:
+                  Efficacy: 8
+                  "Taste/Smell": 4
+                  Pricing: 5
+                  Packaging: 4
+                  Delivery: 3
+                  "Customer Service": 3
+                  "Product Quality": 2
+                  Other: 1
+                sentiment_breakdown:
+                  Positive: 15
+                  Negative: 10
+                  Neutral: 5
+                total_reviews: 30
+        "404":
+          description: Upload not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+
+    UploadResponse:
+      type: object
+      required: [upload_id, count]
+      properties:
+        upload_id:
+          type: string
+          format: uuid
+        count:
+          type: integer
+          description: Number of review rows parsed from the CSV
+
+    AnalyzeResponse:
+      type: object
+      required: [upload_id, status, analysed]
+      properties:
+        upload_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [complete, error]
+        analysed:
+          type: integer
+
+    ReviewResult:
+      type: object
+      required: [review_id, product, review_text, date, theme, sentiment, key_phrases]
+      properties:
+        review_id:
+          type: string
+        product:
+          type: string
+        review_text:
+          type: string
+        date:
+          type: string
+          format: date
+        theme:
+          type: string
+          enum:
+            - Product Quality
+            - Efficacy
+            - Taste/Smell
+            - Packaging
+            - Delivery
+            - Customer Service
+            - Pricing
+            - Other
+        sentiment:
+          type: string
+          enum: [Positive, Negative, Neutral]
+        key_phrases:
+          type: array
+          items:
+            type: string
+
+    AnalyticsResponse:
+      type: object
+      required: [theme_distribution, sentiment_breakdown, total_reviews]
+      properties:
+        theme_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+        sentiment_breakdown:
+          type: object
+          properties:
+            Positive:
+              type: integer
+            Negative:
+              type: integer
+            Neutral:
+              type: integer
+        total_reviews:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

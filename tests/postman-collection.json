@@ -1,0 +1,191 @@
+{
+  "info": {
+    "name": "CX Review Analysis API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "upload_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "GET /health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Body has status ok', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.status).to.eql('ok');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST /upload",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/upload",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "data/sample-reviews.csv"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('upload_id present', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.upload_id).to.be.a('string').and.not.empty;",
+              "  pm.collectionVariables.set('upload_id', body.upload_id);",
+              "});",
+              "pm.test('count is 30', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.count).to.eql(30);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST /analyze/{upload_id}",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/analyze/{{upload_id}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Status is complete', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.status).to.eql('complete');",
+              "  pm.expect(body.upload_id).to.eql(pm.collectionVariables.get('upload_id'));",
+              "  pm.expect(body.analysed).to.be.a('number').and.above(0);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET /results/{upload_id}",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/results/{{upload_id}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Returns array of 30 reviews', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body).to.be.an('array').with.lengthOf(30);",
+              "});",
+              "pm.test('Each review has required fields', () => {",
+              "  const body = pm.response.json();",
+              "  const validThemes = ['Product Quality','Efficacy','Taste/Smell','Packaging','Delivery','Customer Service','Pricing','Other'];",
+              "  const validSentiments = ['Positive','Negative','Neutral'];",
+              "  body.forEach(r => {",
+              "    pm.expect(r.review_id).to.be.a('string').and.not.empty;",
+              "    pm.expect(r.theme).to.be.oneOf(validThemes);",
+              "    pm.expect(r.sentiment).to.be.oneOf(validSentiments);",
+              "    pm.expect(r.key_phrases).to.be.an('array').and.not.empty;",
+              "  });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET /analytics/{upload_id}",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/analytics/{{upload_id}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('theme_distribution is non-empty object', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.theme_distribution).to.be.an('object');",
+              "  pm.expect(Object.keys(body.theme_distribution).length).to.be.above(0);",
+              "});",
+              "pm.test('sentiment_breakdown has Positive/Negative/Neutral', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.sentiment_breakdown).to.have.all.keys('Positive','Negative','Neutral');",
+              "});",
+              "pm.test('total_reviews is 30', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.total_reviews).to.eql(30);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST /upload — invalid file",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/upload",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "README.md"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('Error message present', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.error).to.be.a('string').and.not.empty;",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
