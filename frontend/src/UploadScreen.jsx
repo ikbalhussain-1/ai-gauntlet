@@ -46,11 +46,22 @@ export default function UploadScreen() {
       setStatus("analysing");
       setProgress(65);
       await analyzeUpload(uploadId);
-      setProgress(100);
 
-      navigate(`/dashboard/${uploadId}`);
+      // Poll until analysis is complete (themes populated)
+      const { getResults } = await import("./api");
+      for (let i = 0; i < 45; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const { data } = await getResults(uploadId);
+        if (Array.isArray(data) && data.length > 0 && data[0].theme) {
+          setProgress(100);
+          navigate(`/dashboard/${uploadId}`);
+          return;
+        }
+        setProgress(65 + Math.min(i * 0.7, 30));
+      }
+      throw new Error("Analysis timed out. Please try again.");
     } catch (err) {
-      setError(err.response?.data?.error || "Something went wrong. Please try again.");
+      setError(err.response?.data?.error || err.message || "Something went wrong. Please try again.");
       setStatus("error");
       setProgress(0);
     }
