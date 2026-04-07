@@ -1,0 +1,6 @@
+review_text,expected_theme,expected_sentiment
+"After taking the ashwagandha capsules for a month, my stress levels have noticeably reduced and my sleep quality has improved significantly. I feel calmer and more in control.",Efficacy,Positive
+"The bottle arrived completely damaged — the seal was broken and the product had leaked all over the packaging. Had to throw most of it away.",Packaging,Negative
+"Way too expensive compared to similar Ayurvedic products available on Amazon. I can get the same quality for half the price from other brands.",Pricing,Negative
+"I had an issue with my order and the customer support team resolved it within 2 hours with a full refund. Very impressed with the quick and helpful response.",Customer Service,Positive
+"The aloe vera juice is extremely bitter, almost undrinkable even after chilling. I have tried mixing it with other juices but the taste is still overwhelming.",Taste/Smell,Negative
