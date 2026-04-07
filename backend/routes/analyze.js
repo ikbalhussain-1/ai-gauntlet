@@ -18,6 +18,9 @@ router.post("/:upload_id", async (req, res) => {
 
   db.prepare("UPDATE uploads SET status = 'processing' WHERE upload_id = ?").run(upload_id);
 
+  // Respond immediately so the server stays responsive; process in background
+  res.json({ upload_id, status: "processing", analysed: 0 });
+
   try {
     const results = await analyzeReviews(reviews);
 
@@ -35,12 +38,9 @@ router.post("/:upload_id", async (req, res) => {
     updateAll();
 
     db.prepare("UPDATE uploads SET status = 'complete' WHERE upload_id = ?").run(upload_id);
-
-    return res.json({ upload_id, status: "complete", analysed: results.length });
   } catch (err) {
     db.prepare("UPDATE uploads SET status = 'error' WHERE upload_id = ?").run(upload_id);
     console.error("Analysis error:", err);
-    return res.status(500).json({ error: "Analysis failed: " + err.message });
   }
 });
 
