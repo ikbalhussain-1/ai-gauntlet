@@ -206,7 +206,7 @@ import json,sys
 try:
   d=json.load(sys.stdin)
   exit(0 if d.get('status')=='ok' else 1)
-except: exit(1)
+except Exception: exit(1)
 " 2>/dev/null \
     && chk_pass '/health returns {"status": "ok"}' 3 \
     || chk_fail '/health body incorrect — expected {"status": "ok"}'
@@ -288,7 +288,7 @@ try:
   has_themes = bool(d.get('theme_distribution') or d.get('themes') or d.get('by_theme'))
   has_sent   = bool(d.get('sentiment_breakdown') or d.get('sentiments') or d.get('by_sentiment'))
   exit(0 if (has_themes and has_sent) else 1)
-except: exit(1)
+except Exception: exit(1)
 " 2>/dev/null \
           && chk_pass "GET /analytics returns theme + sentiment aggregates" 5 \
           || chk_warn "GET /analytics: expected theme_distribution + sentiment_breakdown fields"
